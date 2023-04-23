@@ -1,0 +1,36 @@
+service: serverless-tfjs-app
+
+provider:
+  name: aws
+  runtime: nodejs16.x
+  #memorySize: 3008
+  #timeout: 10
+  stage: dev
+  region: ap-northeast-2  #서울 리전
+  environment:
+    #AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
+    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
+
+functions:
+  app:
+    handler: app.handler
+    events:
+      - http:
+          path: /
+          method: ANY
+          cors: true
+      - http:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3000
+    noPrependStageInUrl: true
+    mimeTypes:
+      - 'multipart/form-data'
