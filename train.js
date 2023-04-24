@@ -34,7 +34,7 @@ async function trainModel() {
   const [trainImages, trainLabels] = loadData();
 
   const batchSize = 128;
-  const epochs = 5;
+  const epochs = 30;
 
   // 모델 학습
   await model.fit(trainImages, trainLabels, {

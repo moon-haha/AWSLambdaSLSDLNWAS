@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const serverless = require("serverless-http");
 const app = express();
@@ -41,6 +42,11 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   const predictedClass = prediction.argMax(-1).dataSync()[0];
 
   res.json({ prediction: predictedClass });
+});
+const PORT = 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
 
 module.exports.handler = serverless(app);

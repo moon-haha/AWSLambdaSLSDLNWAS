@@ -7,14 +7,18 @@ provider:
   #timeout: 10
   stage: dev
   region: ap-northeast-2  #서울 리전
-  environment:
+  # environment:
     #AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID}
-    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY}
+  ecr:
+    images:
+      slsdln:
+        path: './'
+        platform : 'linux/amd64'
 
 functions:
   app:
-    handler: app.handler
+    image:
+      name: slsdln
     events:
       - http:
           path: /

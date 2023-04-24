@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build" : "docker build --platform linux/amd64 -t my-lambda-image .",
+    "local" : "docker run --rm -p 9000:8080 my-lambda-image",
+    "testing" : "curl -XPOST \"http://localhost:9000/2015-03-31/functions/function/invocations\" -d '{}'"
   },
   "author": "",
   "license": "ISC",
@@ -26,6 +29,7 @@
   "homepage": "https://github.com/moon-haha/AWSLambdaSLSDLNWAS#readme",
   "description": "",
   "devDependencies": {
+    "dotenv": "^16.0.3",
     "serverless-offline": "^12.0.4",
     "serverless-offline-s3": "^6.2.3"
   }
