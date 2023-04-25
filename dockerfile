@@ -7,12 +7,11 @@ RUN yum -y update && yum -y install gcc-c++ make python3
 # 애플리케이션의 의존성을 설치합니다.
 COPY package*.json ./
 
-# TensorFlow.js 패키지의 바이너리 파일을 강제로 다운로드하고 새로 빌드하도록 시도합니다.
-RUN rm -rf node_modules/@tensorflow/tfjs-node && \
-  npm config set @tensorflow:tfjs-node-linux-amd64 "" && \
-  npm install @tensorflow/tfjs-node --build-from-source
+# AWS Lambda 환경에 맞춰 TensorFlow 패키지를 설치합니다.
+ENV TARGETPLATFORM=linux/arm64
 
-# 나머지 패키지를 설치합니다.
+RUN npm config set @tensorflow:tfjs-node-linux-arm64 ""
+
 RUN npm install
 
 # 애플리케이션 코드를 복사합니다.
