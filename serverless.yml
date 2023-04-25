@@ -19,10 +19,12 @@ functions:
   app:
     image:
       name: slsdln
+      command:
+        - app.handler
     events:
       - http:
           path: /
-          method: ANY
+          method: ANYx
           cors: true
       - http:
           path: /{proxy+}
