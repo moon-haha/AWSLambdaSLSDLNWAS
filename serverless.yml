@@ -24,7 +24,7 @@ functions:
     events:
       - http:
           path: /
-          method: ANYx
+          method: ANY
           cors: true
       - http:
           path: /{proxy+}

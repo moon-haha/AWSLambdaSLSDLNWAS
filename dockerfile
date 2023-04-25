@@ -8,10 +8,6 @@ RUN yum -y update && yum -y install gcc-c++ make python3
 COPY package*.json ./
 
 # AWS Lambda 환경에 맞춰 TensorFlow 패키지를 설치합니다.
-ENV TARGETPLATFORM=linux/arm64
-
-RUN npm config set @tensorflow:tfjs-node-linux-arm64 ""
-
 RUN npm install
 
 # 애플리케이션 코드를 복사합니다.
