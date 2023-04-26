@@ -6,6 +6,10 @@ const { loadModel } = require("./model");
 const multer = require("multer");
 const upload = multer();
 const tf = require("@tensorflow/tfjs-node");
+const bodyParser = require("body-parser");
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 /**
  * routes
@@ -49,4 +53,6 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-module.exports.handler = serverless(app);
+module.exports.handler = serverless(app, {
+  binary: ["*/*", "image/*"],
+});
