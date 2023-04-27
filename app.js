@@ -24,6 +24,7 @@ loadModel().then((loadedModel) => {
 });
 
 app.post("/predict", upload.single("image"), async (req, res) => {
+  //여기서 시간 측정 필요요함.
   if (!model) {
     res.status(500).send("Model not loaded");
     return;
