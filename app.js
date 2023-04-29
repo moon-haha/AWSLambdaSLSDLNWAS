@@ -63,16 +63,12 @@ app.get("/train", async (req, res) => {
 });
 
 let model;
-loadModel().then((loadedModel) => {
-  model = loadedModel;
-});
 
 //Cold Start 체크
 let isColdStart = true;
 app.post("/predict", upload.single("image"), async (req, res) => {
   // 시간 측정 시작
   const startTime = Date.now();
-
   // AWS Lambda 환경 확인
   const isLambda = !!process.env.AWS_EXECUTION_ENV;
 
@@ -89,6 +85,7 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   if (!model) {
     model = await loadModel();
   }
+
   // 모델 불러오기 시간 측정 종료
   const modelLoadElapsedTime = Date.now() - modelLoadStartTime;
 
@@ -122,11 +119,15 @@ app.post("/predict", upload.single("image"), async (req, res) => {
     isColdStart = false;
   }
 });
+
+const isLambda = !!process.env.AWS_EXECUTION_ENV;
 const PORT = 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+if (!isLambda) {
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
 
 module.exports.handler = serverless(app, {
   binary: ["*/*", "image/*"],
