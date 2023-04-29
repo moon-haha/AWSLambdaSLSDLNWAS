@@ -9,6 +9,12 @@ const tf = require("@tensorflow/tfjs-node");
 const bodyParser = require("body-parser");
 
 const { trainModel } = require("./train");
+const AWS = require("aws-sdk");
+AWS.config.update({
+  region: "ap-northeast-2", // 사용하는 리전으로 변경
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+});
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -20,11 +26,6 @@ app.get("/", (req, res) => {
   res.send("Hello, World!");
 });
 
-let model;
-loadModel().then((loadedModel) => {
-  model = loadedModel;
-});
-
 let trainColdStart = true;
 
 // /train 엔드포인트 추가
@@ -34,6 +35,10 @@ app.get("/train", async (req, res) => {
 
   if (isLambda && trainColdStart) {
     console.log("This is a cold start for training");
+  } else if (isLambda && !trainColdStart) {
+    console.log("This is a warm start for training");
+  } else {
+    console.log("This is a local environment for training");
   }
 
   try {
@@ -45,17 +50,21 @@ app.get("/train", async (req, res) => {
       trainColdStart = false;
     }
 
-    res
-      .status(200)
-      .send({
-        message: "Training completed",
-        elapsedTime: elapsedTime,
-        trainColdStart: trainColdStart,
-      });
+    res.status(200).send({
+      message: "Training completed",
+      elapsedTime: elapsedTime,
+      trainColdStart: trainColdStart,
+      environment: isLambda ? "AWS Lambda" : "Local",
+    });
   } catch (error) {
     console.error(error);
     res.status(500).send("Training failed");
   }
+});
+
+let model;
+loadModel().then((loadedModel) => {
+  model = loadedModel;
 });
 
 //Cold Start 체크
@@ -69,8 +78,11 @@ app.post("/predict", upload.single("image"), async (req, res) => {
 
   if (isLambda && isColdStart) {
     console.log("This is a cold start");
+  } else if (isLambda && !isColdStart) {
+    console.log("This is a warm start");
+  } else {
+    console.log("This is a local environment");
   }
-
   // 모델 불러오기 시간 측정 시작
   const modelLoadStartTime = Date.now();
 
@@ -103,7 +115,12 @@ app.post("/predict", upload.single("image"), async (req, res) => {
     modelLoadElapsedTime: modelLoadElapsedTime,
     elapsedTime: elapsedTime,
     isColdStart: isColdStart,
+    environment: isLambda ? "AWS Lambda" : "Local",
   });
+  // 콜드 스타트를 웜 스타트로 변경
+  if (isLambda && isColdStart) {
+    isColdStart = false;
+  }
 });
 const PORT = 3000;
 

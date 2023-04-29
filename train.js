@@ -1,6 +1,8 @@
+const AWS = require("aws-sdk");
 const tf = require("@tensorflow/tfjs-node");
+const fs = require("fs");
 const mnist = require("mnist");
-
+const s3 = new AWS.S3();
 async function trainModel() {
   const model = tf.sequential();
 
@@ -13,12 +15,24 @@ async function trainModel() {
       activation: "relu",
     })
   );
+  model.add(tf.layers.batchNormalization());
   model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+
   model.add(
     tf.layers.conv2d({ filters: 64, kernelSize: 3, activation: "relu" })
   );
+  model.add(tf.layers.batchNormalization());
   model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+
+  model.add(
+    tf.layers.conv2d({ filters: 128, kernelSize: 3, activation: "relu" })
+  );
+  model.add(tf.layers.batchNormalization());
+  model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+
   model.add(tf.layers.flatten());
+  model.add(tf.layers.dense({ units: 256, activation: "relu" }));
+  model.add(tf.layers.dropout({ rate: 0.5 }));
   model.add(tf.layers.dense({ units: 128, activation: "relu" }));
   model.add(tf.layers.dropout({ rate: 0.5 }));
   model.add(tf.layers.dense({ units: 10, activation: "softmax" }));
@@ -51,6 +65,7 @@ async function trainModel() {
 
   // 모델 저장
   await model.save("file://./model");
+  await uploadModelToS3();
 }
 
 function loadData() {
@@ -62,6 +77,32 @@ function loadData() {
   const ys = tf.tensor(trainLabels);
 
   return [xs, ys];
+}
+
+async function uploadModelToS3() {
+  const modelFiles = ["model.json", "weights.bin"];
+  const bucketName = process.env.S3_BUCKET_NAME;
+
+  for (const file of modelFiles) {
+    const fileBuffer = fs.readFileSync(`./model/${file}`);
+
+    const params = {
+      Bucket: bucketName,
+      Key: `model/${file}`,
+      Body: fileBuffer,
+    };
+
+    try {
+      const startTime = Date.now(); // 시작 시간 기록
+      await s3.upload(params).promise();
+      const elapsedTime = Date.now() - startTime; // 경과 시간 계산
+      console.log(
+        `Successfully uploaded ${file} to ${bucketName} in ${elapsedTime}ms`
+      );
+    } catch (error) {
+      console.error(`Error uploading ${file}: ${error}`);
+    }
+  }
 }
 
 module.exports = { trainModel };
