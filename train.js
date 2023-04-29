@@ -36,11 +36,18 @@ async function trainModel() {
   const batchSize = 128;
   const epochs = 30;
 
+  // 시간 측정 시작
+  const startTime = Date.now();
+
   // 모델 학습
   await model.fit(trainImages, trainLabels, {
     batchSize,
     epochs,
   });
+
+  // 시간 측정 종료 및 출력
+  const elapsedTime = Date.now() - startTime;
+  console.log(`Training time: ${elapsedTime}ms`);
 
   // 모델 저장
   await model.save("file://./model");
@@ -57,4 +64,4 @@ function loadData() {
   return [xs, ys];
 }
 
-trainModel();
+module.exports = { trainModel };

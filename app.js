@@ -8,6 +8,8 @@ const upload = multer();
 const tf = require("@tensorflow/tfjs-node");
 const bodyParser = require("body-parser");
 
+const { trainModel } = require("./train");
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -23,12 +25,60 @@ loadModel().then((loadedModel) => {
   model = loadedModel;
 });
 
-app.post("/predict", upload.single("image"), async (req, res) => {
-  //여기서 시간 측정 필요요함.
-  if (!model) {
-    res.status(500).send("Model not loaded");
-    return;
+let trainColdStart = true;
+
+// /train 엔드포인트 추가
+app.get("/train", async (req, res) => {
+  // AWS Lambda 환경 확인
+  const isLambda = !!process.env.AWS_EXECUTION_ENV;
+
+  if (isLambda && trainColdStart) {
+    console.log("This is a cold start for training");
   }
+
+  try {
+    const startTime = Date.now();
+    await trainModel();
+    const elapsedTime = Date.now() - startTime;
+    // 콜드 스타트 여부 업데이트
+    if (isLambda && trainColdStart) {
+      trainColdStart = false;
+    }
+
+    res
+      .status(200)
+      .send({
+        message: "Training completed",
+        elapsedTime: elapsedTime,
+        trainColdStart: trainColdStart,
+      });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Training failed");
+  }
+});
+
+//Cold Start 체크
+let isColdStart = true;
+app.post("/predict", upload.single("image"), async (req, res) => {
+  // 시간 측정 시작
+  const startTime = Date.now();
+
+  // AWS Lambda 환경 확인
+  const isLambda = !!process.env.AWS_EXECUTION_ENV;
+
+  if (isLambda && isColdStart) {
+    console.log("This is a cold start");
+  }
+
+  // 모델 불러오기 시간 측정 시작
+  const modelLoadStartTime = Date.now();
+
+  if (!model) {
+    model = await loadModel();
+  }
+  // 모델 불러오기 시간 측정 종료
+  const modelLoadElapsedTime = Date.now() - modelLoadStartTime;
 
   // 이미지 파일 확인
   if (!req.file) {
@@ -46,7 +96,14 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   const prediction = model.predict(input);
   const predictedClass = prediction.argMax(-1).dataSync()[0];
 
-  res.json({ prediction: predictedClass });
+  // 시간 측정 종료 및 결과 반환
+  const elapsedTime = Date.now() - startTime;
+  res.json({
+    prediction: predictedClass,
+    modelLoadElapsedTime: modelLoadElapsedTime,
+    elapsedTime: elapsedTime,
+    isColdStart: isColdStart,
+  });
 });
 const PORT = 3000;
 
