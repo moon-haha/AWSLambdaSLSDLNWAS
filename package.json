@@ -12,11 +12,8 @@
   "license": "ISC",
   "dependencies": {
     "@tensorflow/tfjs": "^4.4.0",
-    "@tensorflow/tfjs-layers": "^4.4.0",
     "@tensorflow/tfjs-node": "^3.21.1",
-    "@tensorflow/tfjs-vis": "^1.5.1",
     "aws-sdk": "^2.1368.0",
-    "ejs": "^3.1.9",
     "express": "^4.18.2",
     "mnist": "^1.1.0",
     "multer": "^1.4.5-lts.1",
@@ -35,6 +32,5 @@
   "devDependencies": {
     "dotenv": "^16.0.3",
     "serverless-offline": "^12.0.4",
-    "serverless-offline-s3": "^6.2.3"
   }
 }

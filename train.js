@@ -38,7 +38,7 @@ async function uploadLogsToS3() {
 async function trainModel() {
   const model = tf.sequential();
 
-  // 모델 아키텍처
+  // Model architecture
   model.add(
     tf.layers.conv2d({
       inputShape: [28, 28, 1],
@@ -47,38 +47,37 @@ async function trainModel() {
       activation: "relu",
     })
   );
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
+  model.add(tf.layers.maxPooling2d({ poolSize: 2, strides: 2 }));
 
   model.add(
-    tf.layers.conv2d({ filters: 32, kernelSize: 3, activation: "relu" })
+    tf.layers.conv2d({ kernelSize: 3, filters: 32, activation: "relu" })
   );
-  model.add(tf.layers.batchNormalization());
-  model.add(tf.layers.maxPooling2d({ poolSize: 2 }));
 
-  model.add(tf.layers.flatten());
+  model.add(tf.layers.maxPooling2d({ poolSize: 2, strides: 2 }));
+  model.add(
+    tf.layers.conv2d({ kernelSize: 3, filters: 32, activation: "relu" })
+  );
+  model.add(tf.layers.flatten({}));
+
   model.add(tf.layers.dense({ units: 64, activation: "relu" }));
-  model.add(tf.layers.dropout({ rate: 0.5 }));
   model.add(tf.layers.dense({ units: 10, activation: "softmax" }));
+  model.summary();
 
-  const optimizer = tf.train.adam(0.001);
-
-  // 모델 컴파일
+  // Model compile
   model.compile({
-    optimizer: optimizer,
+    optimizer: "adam",
     loss: "categoricalCrossentropy",
     metrics: ["accuracy"],
   });
 
-  // 데이터 로드 및 전처리
+  // Load and preprocess data
   const [trainImages, trainLabels] = loadData();
 
-  // 테스트 데이터 로드
+  // Load test data
   const [testImages, testLabels] = loadTestData();
 
   const batchSize = 128;
-  const epochs = 5;
-
+  const epochs = 30;
   // 시간 측정 시작
   const startTime = Date.now();
 
@@ -97,8 +96,15 @@ async function trainModel() {
       tensorboard(logDir),
     ],
   });
+
   // 모델 평가
   const evaluation = model.evaluate(testImages, testLabels, { batchSize });
+  console.log(
+    `\n평가 결과:\n` +
+      `  손실 = ${evaluation[0].dataSync()[0].toFixed(3)}; ` +
+      `정확도 = ${evaluation[1].dataSync()[0].toFixed(3)}`
+  );
+
   const loss = evaluation[0].dataSync()[0];
   const accuracy = evaluation[1].dataSync()[0];
 
@@ -107,7 +113,7 @@ async function trainModel() {
 
   // 시간 측정 종료 및 출력
   const elapsedTime = Date.now() - startTime;
-  console.log(`Training time: ${elapsedTime}ms`);
+  console.log(`Training with Evaluation time: ${elapsedTime}ms`);
 
   await uploadLogsToS3();
 
@@ -118,24 +124,42 @@ async function trainModel() {
 
 function loadData() {
   const dataset = mnist.set(56000, 14000);
-  const trainImages = dataset.training.map((item) => item.input);
-  const trainLabels = dataset.training.map((item) => item.output);
 
-  const xs = tf.tensor(trainImages).reshape([-1, 28, 28, 1]).div(255);
-  const ys = tf.tensor(trainLabels);
+  const trainImagesArray = dataset.training.map((item) => item.input);
+  const trainLabelsArray = dataset.training.map((item) => item.output);
 
-  return [xs, ys];
+  const trainImages = tf.tensor(trainImagesArray, [
+    trainImagesArray.length,
+    28,
+    28,
+    1,
+  ]);
+  const trainLabels = tf.tensor(trainLabelsArray, [
+    trainLabelsArray.length,
+    10,
+  ]);
+
+  return [trainImages, trainLabels];
 }
 
 function loadTestData() {
   const dataset = mnist.set(56000, 14000);
-  const testImages = dataset.test.map((item) => item.input);
-  const testLabels = dataset.test.map((item) => item.output);
 
-  const xs = tf.tensor(testImages).reshape([-1, 28, 28, 1]).div(255);
-  const ys = tf.tensor(testLabels);
+  const trainImagesArray = dataset.test.map((item) => item.input);
+  const trainLabelsArray = dataset.test.map((item) => item.output);
 
-  return [xs, ys];
+  const trainImages = tf.tensor(trainImagesArray, [
+    trainImagesArray.length,
+    28,
+    28,
+    1,
+  ]);
+  const trainLabels = tf.tensor(trainLabelsArray, [
+    trainLabelsArray.length,
+    10,
+  ]);
+
+  return [trainImages, trainLabels];
 }
 
 async function uploadModelToS3() {
