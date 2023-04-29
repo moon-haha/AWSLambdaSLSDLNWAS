@@ -6,10 +6,12 @@ const { loadModel } = require("./model");
 const multer = require("multer");
 const upload = multer();
 const tf = require("@tensorflow/tfjs-node");
+
 const bodyParser = require("body-parser");
 
 const { trainModel } = require("./train");
 const AWS = require("aws-sdk");
+
 AWS.config.update({
   region: "ap-northeast-2", // 사용하는 리전으로 변경
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
