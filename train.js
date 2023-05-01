@@ -4,7 +4,78 @@ const fs = require("fs");
 const mnist = require("mnist");
 const s3 = new AWS.S3();
 const tensorboard = require("@tensorflow/tfjs-node").node.tensorBoard;
-const logDir = "./logs";
+const logDir = "./tmp/logs/train";
+const zlib = require("zlib");
+
+// .gz 파일 압축 해제 및 읽어오는 함수
+function decompressAndReadFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const buffer = fs.readFileSync(filePath);
+    zlib.unzip(buffer, (err, decompressedBuffer) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(decompressedBuffer);
+      }
+    });
+  });
+}
+async function loadFashionMnistData() {
+  const trainImages = await decompressAndReadFile(
+    "./data/train-images-idx3-ubyte.gz"
+  );
+  const trainLabels = await decompressAndReadFile(
+    "./data/train-labels-idx1-ubyte.gz"
+  );
+  const testImages = await decompressAndReadFile(
+    "./data/t10k-images-idx3-ubyte.gz"
+  );
+  const testLabels = await decompressAndReadFile(
+    "./data/t10k-labels-idx1-ubyte.gz"
+  );
+
+  return { trainImages, trainLabels, testImages, testLabels };
+}
+
+async function loadData() {
+  const { trainImages, trainLabels } = await loadFashionMnistData();
+
+  const imagesBuffer = new Uint8Array(trainImages.buffer, 16);
+  const labelsBuffer = new Uint8Array(trainLabels.buffer, 8);
+
+  const images = Array.from(imagesBuffer);
+  const labels = Array.from(labelsBuffer);
+
+  const imagesTensor = tf
+    .tensor4d(images, [60000, 28, 28, 1], "float32")
+    .div(tf.scalar(255));
+  const labelsTensor = tf.oneHot(
+    tf.tensor1d(labels.slice(0, 60000), "int32"),
+    10
+  );
+
+  return [imagesTensor, labelsTensor];
+}
+
+async function loadTestData() {
+  const { testImages, testLabels } = await loadFashionMnistData();
+
+  const imagesBuffer = new Uint8Array(testImages.buffer, 16);
+  const labelsBuffer = new Uint8Array(testLabels.buffer, 8);
+
+  const images = Array.from(imagesBuffer);
+  const labels = Array.from(labelsBuffer);
+
+  const imagesTensor = tf
+    .tensor4d(images, [10000, 28, 28, 1], "float32")
+    .div(tf.scalar(255));
+  const labelsTensor = tf.oneHot(
+    tf.tensor1d(labels.slice(0, 10000), "int32"),
+    10
+  );
+
+  return [imagesTensor, labelsTensor];
+}
 
 async function uploadLogsToS3() {
   const logFiles = fs.readdirSync(logDir).filter((file) => {
@@ -71,10 +142,10 @@ async function trainModel() {
   });
 
   // Load and preprocess data
-  const [trainImages, trainLabels] = loadData();
+  const [trainImages, trainLabels] = await loadData();
 
   // Load test data
-  const [testImages, testLabels] = loadTestData();
+  const [testImages, testLabels] = await loadTestData();
 
   const batchSize = 128;
   const epochs = 30;
@@ -120,46 +191,6 @@ async function trainModel() {
   // 모델 저장
   await model.save("file://./model");
   await uploadModelToS3();
-}
-
-function loadData() {
-  const dataset = mnist.set(56000, 14000);
-
-  const trainImagesArray = dataset.training.map((item) => item.input);
-  const trainLabelsArray = dataset.training.map((item) => item.output);
-
-  const trainImages = tf.tensor(trainImagesArray, [
-    trainImagesArray.length,
-    28,
-    28,
-    1,
-  ]);
-  const trainLabels = tf.tensor(trainLabelsArray, [
-    trainLabelsArray.length,
-    10,
-  ]);
-
-  return [trainImages, trainLabels];
-}
-
-function loadTestData() {
-  const dataset = mnist.set(56000, 14000);
-
-  const trainImagesArray = dataset.test.map((item) => item.input);
-  const trainLabelsArray = dataset.test.map((item) => item.output);
-
-  const trainImages = tf.tensor(trainImagesArray, [
-    trainImagesArray.length,
-    28,
-    28,
-    1,
-  ]);
-  const trainLabels = tf.tensor(trainLabelsArray, [
-    trainLabelsArray.length,
-    10,
-  ]);
-
-  return [trainImages, trainLabels];
 }
 
 async function uploadModelToS3() {

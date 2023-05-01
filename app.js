@@ -18,6 +18,12 @@ AWS.config.update({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
+const lambda = new AWS.Lambda({
+  region: "ap-northeast-2", // 사용하는 리전으로 변경
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+});
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -119,6 +125,22 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   // 콜드 스타트를 웜 스타트로 변경
   if (isLambda && isColdStart) {
     isColdStart = false;
+  }
+});
+
+app.get("/call-lambda", async (req, res) => {
+  const lambdaParams = {
+    FunctionName: "serverless-tfjs-app-dev-app",
+    Payload: JSON.stringify({}),
+  };
+
+  try {
+    const response = await lambda.invoke(lambdaParams).promise();
+    const payload = JSON.parse(response.Payload);
+    res.status(200).send(payload);
+  } catch (error) {
+    console.error("Error calling Lambda function:", error);
+    res.status(500).send("Error calling Lambda function");
   }
 });
 

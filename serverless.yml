@@ -4,7 +4,7 @@ provider:
   name: aws
   runtime: nodejs16.x
   #memorySize: 3008
-  #timeout: 10
+  timeout: 900
   stage: dev
   region: ap-northeast-2  #서울 리전
   # environment:
@@ -17,6 +17,7 @@ provider:
 
 functions:
   app:
+    timeout: 900
     image:
       name: slsdln
       command:
@@ -36,7 +37,5 @@ plugins:
 
 custom:
   serverless-offline:
-    httpPort: 3000
-    noPrependStageInUrl: true
     mimeTypes:
       - 'multipart/form-data'
