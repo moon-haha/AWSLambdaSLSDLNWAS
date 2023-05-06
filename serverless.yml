@@ -16,26 +16,19 @@ provider:
         platform : 'linux/amd64'
 
 functions:
-  app:
-    timeout: 900
+  dln:
+    memorySize: 10240 # 메모리 할당량을 증가시킵니다 (예: 1024 MB)
+    url : true
     image:
       name: slsdln
       command:
         - app.handler
-    events:
-      - http:
-          path: /
-          method: ANY
-          cors: true
-      - http:
-          path: /{proxy+}
-          method: ANY
-          cors: true
-
-plugins:
-  - serverless-offline
-
-custom:
-  serverless-offline:
-    mimeTypes:
-      - 'multipart/form-data'
+    # events:
+    #   - http:
+    #       path: /
+    #       method: ANY
+    #       cors: true
+    #   - http:
+    #       path: /{proxy+}
+    #       method: ANY
+    #       cors: true

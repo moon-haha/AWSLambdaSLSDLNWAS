@@ -27,19 +27,16 @@ const lambda = new AWS.Lambda({
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-/**
- * routes
- */
-app.get("/", (req, res) => {
-  res.send("Hello, World!");
-});
-
 let trainColdStart = true;
 
 // /train 엔드포인트 추가
 app.get("/train", async (req, res) => {
   // AWS Lambda 환경 확인
   const isLambda = !!process.env.AWS_EXECUTION_ENV;
+  const lambdaMemory = process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE;
+  const lambdaVCPU = lambdaMemory
+    ? Math.floor(lambdaMemory / 3000) * 2
+    : undefined;
 
   if (isLambda && trainColdStart) {
     console.log("This is a cold start for training");
@@ -63,6 +60,10 @@ app.get("/train", async (req, res) => {
       elapsedTime: elapsedTime,
       trainColdStart: trainColdStart,
       environment: isLambda ? "AWS Lambda" : "Local",
+      coldStartTime: trainColdStart ? elapsedTime : undefined,
+      warmStartTime: !trainColdStart ? elapsedTime : undefined,
+      lambdaMemory: lambdaMemory, // 메모리 할당량 추가
+      lambdaVCPU: lambdaVCPU, // vCPU 수 추가
     });
   } catch (error) {
     console.error(error);
@@ -79,6 +80,10 @@ app.post("/predict", upload.single("image"), async (req, res) => {
   const startTime = Date.now();
   // AWS Lambda 환경 확인
   const isLambda = !!process.env.AWS_EXECUTION_ENV;
+  const lambdaMemory = process.env.AWS_LAMBDA_FUNCTION_MEMORY_SIZE;
+  const lambdaVCPU = lambdaMemory
+    ? Math.floor(lambdaMemory / 3000) * 2
+    : undefined;
 
   if (isLambda && isColdStart) {
     console.log("This is a cold start");
@@ -121,26 +126,14 @@ app.post("/predict", upload.single("image"), async (req, res) => {
     elapsedTime: elapsedTime,
     isColdStart: isColdStart,
     environment: isLambda ? "AWS Lambda" : "Local",
+    coldStartTime: isColdStart ? elapsedTime : undefined,
+    warmStartTime: !isColdStart ? elapsedTime : undefined,
+    lambdaMemory: lambdaMemory, // 메모리 할당량 추가
+    lambdaVCPU: lambdaVCPU, // vCPU 수 추가
   });
   // 콜드 스타트를 웜 스타트로 변경
   if (isLambda && isColdStart) {
     isColdStart = false;
-  }
-});
-
-app.get("/call-lambda", async (req, res) => {
-  const lambdaParams = {
-    FunctionName: "serverless-tfjs-app-dev-app",
-    Payload: JSON.stringify({}),
-  };
-
-  try {
-    const response = await lambda.invoke(lambdaParams).promise();
-    const payload = JSON.parse(response.Payload);
-    res.status(200).send(payload);
-  } catch (error) {
-    console.error("Error calling Lambda function:", error);
-    res.status(500).send("Error calling Lambda function");
   }
 });
 

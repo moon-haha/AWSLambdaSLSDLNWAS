@@ -1,10 +1,9 @@
 const AWS = require("aws-sdk");
 const tf = require("@tensorflow/tfjs-node");
 const fs = require("fs");
-const mnist = require("mnist");
 const s3 = new AWS.S3();
-const tensorboard = require("@tensorflow/tfjs-node").node.tensorBoard;
-const logDir = "./tmp/logs/train";
+// const tensorboard = require("@tensorflow/tfjs-node").node.tensorBoard;
+// const logdir = "/tmp/tensorboard_logs";
 const zlib = require("zlib");
 
 // .gz 파일 압축 해제 및 읽어오는 함수
@@ -77,34 +76,34 @@ async function loadTestData() {
   return [imagesTensor, labelsTensor];
 }
 
-async function uploadLogsToS3() {
-  const logFiles = fs.readdirSync(logDir).filter((file) => {
-    const filePath = `${logDir}/${file}`;
-    return fs.lstatSync(filePath).isFile(); // 디렉터리가 아닌 파일만 필터링
-  });
-  const bucketName = process.env.S3_BUCKET_NAME;
+// async function uploadLogsToS3() {
+//   const logFiles = fs.readdirSync(logDir).filter((file) => {
+//     const filePath = `${logDir}/${file}`;
+//     return fs.lstatSync(filePath).isFile(); // 디렉터리가 아닌 파일만 필터링
+//   });
+//   const bucketName = process.env.S3_BUCKET_NAME;
 
-  for (const file of logFiles) {
-    const fileBuffer = fs.readFileSync(`${logDir}/${file}`);
+//   for (const file of logFiles) {
+//     const fileBuffer = fs.readFileSync(`${logDir}/${file}`);
 
-    const params = {
-      Bucket: bucketName,
-      Key: `logs/${file}`,
-      Body: fileBuffer,
-    };
+//     const params = {
+//       Bucket: bucketName,
+//       Key: `logs/${file}`,
+//       Body: fileBuffer,
+//     };
 
-    try {
-      const startTime = Date.now(); // 시작 시간 기록
-      await s3.upload(params).promise();
-      const elapsedTime = Date.now() - startTime; // 경과 시간 계산
-      console.log(
-        `Successfully uploaded ${file} to ${bucketName} in ${elapsedTime}ms`
-      );
-    } catch (error) {
-      console.error(`Error uploading ${file}: ${error}`);
-    }
-  }
-}
+//     try {
+//       const startTime = Date.now(); // 시작 시간 기록
+//       await s3.upload(params).promise();
+//       const elapsedTime = Date.now() - startTime; // 경과 시간 계산
+//       console.log(
+//         `Successfully uploaded ${file} to ${bucketName} in ${elapsedTime}ms`
+//       );
+//     } catch (error) {
+//       console.error(`Error uploading ${file}: ${error}`);
+//     }
+//   }
+// }
 
 async function trainModel() {
   const model = tf.sequential();
@@ -157,14 +156,13 @@ async function trainModel() {
     batchSize,
     epochs,
     callbacks: [
-      // {
-      //   onEpochEnd: async (epoch, logs) => {
-      //     console.log(
-      //       `Epoch ${epoch + 1}: loss = ${logs.loss}, accuracy = ${logs.acc}`
-      //     );
-      //   },
-      // },
-      tensorboard(logDir),
+      {
+        onEpochEnd: async (epoch, logs) => {
+          console.log(
+            `Epoch ${epoch + 1}: loss = ${logs.loss}, accuracy = ${logs.acc}`
+          );
+        },
+      },
     ],
   });
 
@@ -186,10 +184,10 @@ async function trainModel() {
   const elapsedTime = Date.now() - startTime;
   console.log(`Training with Evaluation time: ${elapsedTime}ms`);
 
-  await uploadLogsToS3();
+  // await uploadLogsToS3();
 
   // 모델 저장
-  await model.save("file://./model");
+  await model.save("file:///tmp/model");
   await uploadModelToS3();
 }
 
@@ -198,7 +196,7 @@ async function uploadModelToS3() {
   const bucketName = process.env.S3_BUCKET_NAME;
 
   for (const file of modelFiles) {
-    const fileBuffer = fs.readFileSync(`./model/${file}`);
+    const fileBuffer = fs.readFileSync(`/tmp/model/${file}`);
 
     const params = {
       Bucket: bucketName,
